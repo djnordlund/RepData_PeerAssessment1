@@ -1,14 +1,25 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
 author: Daniel Nordlund
-date: October 9, 2015
+date: October 14, 2015
 output: 
   html_document:
     keep_md: true
 ---
 
+## Introduction
+
+For first peer assessment project we were asked to download, read in to R, and analyze a data set containing information on the two months of walking activity for an individual.  The data set contained three variables;
+
+- **steps**: Number of steps taking in a 5-minute interval (missing values are coded as NA)
+- **date**: The date on which the measurement was taken in YYYY-MM-DD format
+- **interval**: Identifier for the 5-minute interval in which measurement was taken
 
 ## Loading and preprocessing the data
+
+The data was downloaded from [URL here] and unzipped in the current working directory of the project.  The activity data was read into a data frame called **activity**.  
+
+Some additional variables were created to ease the analysis and plotting of the data.  The date and interval variables were combined into a date/time variable called **datetime** and added to the activity data frame.  A **time_of_day** variable was created from the interval identifier.  The variable **time_of_day** is a "hack" to ease aggregating the data over time intervals and then subequently plotting the intervals using the **ggplot2** package.
 
 ```{r}
 ## unzip project data and read it in
@@ -28,6 +39,9 @@ activity$time_of_day <- with(activity, ymd_hm(paste('1970-01-01', interval%/%100
 ```
 
 ## What is mean total number of steps taken per day?
+
+The first thing we were asked to explore had to do with the distribution of total number of steps per day.  The number of steps per 5-minute interval summed up within days, and histogram of the total steps per day was plotted.  This analysis was to ignore time intervals where the **steps** variable was missing.
+
 ```{r}
 ## identify rows where values of steps is missing
 na_index <- is.na(activity$steps)
@@ -39,8 +53,13 @@ steps_summary <- summary(total_steps_perday[,2])
 sprintf('Mean = %7.1f and Median = %7.1f', steps_summary['Mean'], steps_summary['Median'])
 
 ```
+The mean number of steps per day was `r sprintf('%7.1f', steps_summary['Mean'])` and the median was `r sprintf('%7.1f', steps_summary['Median'])`.
+
 
 ## What is the average daily activity pattern?
+
+Next, we were asked to examine the pattern of activity in each time interval averaged across days.  So the mean number of steps per time interval aggregated across days was computed and a histogram of the mean number of steps was plotted.
+
 ```{r}
 ## plot time series of total steps within time periods
 ## averaged over days
@@ -52,13 +71,29 @@ max_interval <- df[which.max(df$steps),"time_of_day"]
 sprintf('Interval with maximum mean number of steps began at %s', format(max_interval,'%H:%M'))
 ```
 
+The interval with the maximum mean number of steps across all days was the interval that began at `r sprintf('%s', format(max_interval,'%H:%M'))`. 
+
+
 ## Imputing missing values
+
+Next we were asked the number of intervals with missing data.  
+
 ```{r}
 ## how much missing data is there?
-percent_missing <- sum(is.na(activity$steps)) / nrow(activity) * 100
+count_missing <- sum(is.na(activity$steps))
+percent_missing <- count_missing / nrow(activity) * 100
 sprintf("Percent of intervals where variable, steps, was NA: %5.1f", percent_missing)
+```
+
+There were `r count_missing` intervals with missing data which was `r sprintf('%5.1f', percent_missing)` percent of the intervals. 
 
 ## impute the the mean value for the same time interval and day of week
+
+The next task was to devise a method for imputing values for the intervals where the number of steps was missing. There are a variety of approaches that can be used for imputation of data.  For this assignment, I chose to do a fairly simple mean imputation.  However, subsequent analyses were going to be looking at differences between patterns of activities for weekdays versus weekend days. So, for a missing value for a particular time interval in a particular day of the week (e.g. Mon or Tue or ... ), I decided to impute the mean of just that time interval and day of the week.  Therefore, I created a variable **day_of_week** to use for computing mean number of steps within interval and day of week. Finally a variable **imputed_steps** was created from the original **steps** variable, where missing values of **steps** were replaced by the imputed mean values.
+
+Next, a histogram of the total number of steps per day (based on the imputed data) was plotted.
+
+```{r}
 activity$day_of_week <- wday(activity$datetime)
 imputation_df <- aggregate(steps ~ time_of_day + day_of_week, data=activity, FUN=mean)
 imputed_activity <- merge(activity, imputation_df, by=c('day_of_week','time_of_day'), all.x=TRUE) 
@@ -73,9 +108,13 @@ sprintf('Mean = %s and Median = %s', imp_steps_summary['Mean'], imp_steps_summar
 
 ```
 
+The distribution of the imputed data is quite similar to the original distribution of total steps where missing values were ignored. The mean and median number of steps for the imputed data was `r sprintf('%7.1f and %7.1f', imp_steps_summary['Mean'], imp_steps_summary['Median'])`, respectively, as compared to the original values of `r sprintf('%7.1f and %7.1f', steps_summary['Mean'], steps_summary['Median'])`.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Finally we were asked to determine if there were differences between weekdays and weekends with respect to activity at various times of day.  We were asked to use the imputed data for this comparison.  I created a **weekday** variable that took on the value 'Weekend' if the day of the week was either a Saturday or a Sunday, and took on the value of 'Weekday' otherwise.  The mean number of steps was computed within **weekday** and **time_of_day** and the **ggplot2** package was used to plot time series for weekdays and weekends, seoarately.
+
 ```{r}
 ## 
 library(ggplot2)
@@ -86,3 +125,4 @@ qplot(time_of_day, imputed_steps, data=df, facets = weekday ~ ., geom=c('line'),
 
 ```
 
+The activity pattern did differ between weekdays and weekends with increased activity starting earlier on weekdays and ending later on weekends.  There also seems to be more activity during the middle hours of the day on weekends than on weekdays.
