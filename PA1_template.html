@@ -203,7 +203,7 @@ hr {
 <body>
 <h2>Introduction</h2>
 
-<p>For first peer assessment project we were asked to download, read in to R, and analyze a data set containing information on the two months of walking activity for an individual.  The data set contained three variables;</p>
+<p>For first peer assessment project we were asked to download, read into R, and analyze a data set containing information on two months of daily walking activity for an individual.  The data set contained three variables;</p>
 
 <ul>
 <li><strong>steps</strong>: Number of steps taking in a 5-minute interval (missing values are coded as NA)</li>
@@ -213,12 +213,12 @@ hr {
 
 <h2>Loading and preprocessing the data</h2>
 
-<p>The data was downloaded from [URL here] and unzipped in the current working directory of the project.  The activity data was read into a data frame called <strong>activity</strong>.  </p>
+<p>The data was downloaded from <a href="https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip">https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip</a> and unzipped in the current working directory of the project.  The activity data was read into a data frame called <strong>activity</strong>.  </p>
 
 <p>Some additional variables were created to ease the analysis and plotting of the data.  The date and interval variables were combined into a date/time variable called <strong>datetime</strong> and added to the activity data frame.  A <strong>time_of_day</strong> variable was created from the interval identifier.  The variable <strong>time_of_day</strong> is a &ldquo;hack&rdquo; to ease aggregating the data over time intervals and then subequently plotting the intervals using the <strong>ggplot2</strong> package.</p>
 
 <pre><code class="r">## unzip project data and read it in
-## unzip(&#39;./activity.zip&#39;)
+## unzip(&#39;https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip&#39;)
 activity &lt;- read.csv(&#39;activity.csv&#39;, stringsAsFactors = FALSE)
 dim(activity)
 </code></pre>
@@ -238,7 +238,7 @@ activity$time_of_day &lt;- with(activity, ymd_hm(paste(&#39;1970-01-01&#39;, int
 
 <h2>What is mean total number of steps taken per day?</h2>
 
-<p>The first thing we were asked to explore had to do with the distribution of total number of steps per day.  The number of steps per 5-minute interval summed up within days, and histogram of the total steps per day was plotted.  This analysis was to ignore time intervals where the <strong>steps</strong> variable was missing.</p>
+<p>The first thing we were asked to explore was the distribution of total number of steps per day.  The number of steps per 5-minute interval was summed up within days, and a histogram of the total steps per day was plotted.  This analysis ignored time intervals where the <strong>steps</strong> variable was missing.</p>
 
 <pre><code class="r">## identify rows where values of steps is missing
 na_index &lt;- is.na(activity$steps)
@@ -261,7 +261,7 @@ sprintf(&#39;Mean = %7.1f and Median = %7.1f&#39;, steps_summary[&#39;Mean&#39;]
 
 <h2>What is the average daily activity pattern?</h2>
 
-<p>Next, we were asked to examine the pattern of activity in each time interval averaged across days.  So the mean number of steps per time interval aggregated across days was computed and a histogram of the mean number of steps was plotted.</p>
+<p>Next, we were asked to examine the pattern of activity by time interval averaged across days.  So the mean number of steps per time interval aggregated across days was computed and a histogram of the mean number of steps was plotted.</p>
 
 <pre><code class="r">## plot time series of total steps within time periods
 ## averaged over days
@@ -283,7 +283,7 @@ sprintf(&#39;Interval with maximum mean number of steps began at %s&#39;, format
 
 <h2>Imputing missing values</h2>
 
-<p>Next we were asked the number of intervals with missing data.  </p>
+<p>Next we were asked to determine the number of intervals with missing data.  </p>
 
 <pre><code class="r">## how much missing data is there?
 count_missing &lt;- sum(is.na(activity$steps))
@@ -296,37 +296,42 @@ sprintf(&quot;Percent of intervals where variable, steps, was NA: %5.1f&quot;, p
 
 <p>There were 2304 intervals with missing data which was  13.1 percent of the intervals. </p>
 
-<h2>impute the the mean value for the same time interval and day of week</h2>
-
-<p>The next task was to devise a method for imputing values for the intervals where the number of steps was missing. There are a variety of approaches that can be used for imputation of data.  For this assignment, I chose to do a fairly simple mean imputation.  However, subsequent analyses were going to be looking at differences between patterns of activities for weekdays versus weekend days. So, for a missing value for a particular time interval in a particular day of the week (e.g. Mon or Tue or &hellip; ), I decided to impute the mean of just that time interval and day of the week.  Therefore, I created a variable <strong>day_of_week</strong> to use for computing mean number of steps within interval and day of week. Finally a variable <strong>imputed_steps</strong> was created from the original <strong>steps</strong> variable, where missing values of <strong>steps</strong> were replaced by the imputed mean values.</p>
+<p>The next task was to devise a method for imputing values for the intervals where the number of steps was missing. There are a variety of approaches that can be used for imputation of data.  For this analysis, I chose to do a fairly simple mean imputation.  However, subsequent analyses were going to be looking at differences between patterns of activities for weekdays versus weekend days. So, for a missing value for a particular time interval in a particular day of the week (e.g. Mon or Tue or &hellip; ), I decided to impute the mean of just that time interval and day of the week.  Therefore, I created a variable <strong>day_of_week</strong> to use for computing mean number of steps within interval and day of week. Finally a variable <strong>imputed_steps</strong> was created from the original <strong>steps</strong> variable, where missing values of <strong>steps</strong> were replaced by the imputed mean values.</p>
 
 <p>Next, a histogram of the total number of steps per day (based on the imputed data) was plotted.</p>
 
-<pre><code class="r">activity$day_of_week &lt;- wday(activity$datetime)
+<pre><code class="r">## create a day of week variable for imputation and for flagging weekdays and weekends
+activity$day_of_week &lt;- wday(activity$datetime)
+
+## compute mean values by day_of_week and time_of_day
 imputation_df &lt;- aggregate(steps ~ time_of_day + day_of_week, data=activity, FUN=mean)
+## merge imputed values with original data and replace NA with imputed means
 imputed_activity &lt;- merge(activity, imputation_df, by=c(&#39;day_of_week&#39;,&#39;time_of_day&#39;), all.x=TRUE) 
 imputed_activity &lt;- imputed_activity[order(imputed_activity$datetime),]
 imputed_activity$imputed_steps &lt;- ifelse(is.na(imputed_activity$steps.x), imputed_activity$steps.y, imputed_activity$steps.x)
 
+## compute total steps per day for imputed data
 imputed_total_steps_perday &lt;- aggregate(imputed_steps ~ date, data=imputed_activity,  FUN=sum)
 
+## plot histogram of imputed data frame
 hist(imputed_total_steps_perday[,2], breaks=8, main=&#39;Histogram of total steps per day\nMissing data imputed by day of week and interval&#39;, xlab=&#39;Total steps&#39;)
 </code></pre>
 
 <p><img src="data:image/png;base64,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" alt="plot of chunk unnamed-chunk-5"/> </p>
 
-<pre><code class="r">imp_steps_summary &lt;- summary(imputed_total_steps_perday[,2])
+<pre><code class="r">## compute summary statistics for the imputed data
+imp_steps_summary &lt;- summary(imputed_total_steps_perday[,2])
 sprintf(&#39;Mean = %s and Median = %s&#39;, imp_steps_summary[&#39;Mean&#39;], imp_steps_summary[&#39;Median&#39;])
 </code></pre>
 
 <pre><code>## [1] &quot;Mean = 10820 and Median = 11020&quot;
 </code></pre>
 
-<p>The distribution of the imputed data is quite similar to the original distribution of total steps where missing values were ignored. The mean and median number of steps for the imputed data was 10820.0 and 11020.0, respectively, as compared to the original values of 10770.0 and 10760.0.</p>
+<p>The distribution of the imputed data is similar to the original distribution of total steps where missing values were ignored. The mean and median number of steps for the imputed data was 10820.0 and 11020.0, respectively, as compared to the original values of 10770.0 and 10760.0.</p>
 
 <h2>Are there differences in activity patterns between weekdays and weekends?</h2>
 
-<p>Finally we were asked to determine if there were differences between weekdays and weekends with respect to activity at various times of day.  We were asked to use the imputed data for this comparison.  I created a <strong>weekday</strong> variable that took on the value &#39;Weekend&#39; if the day of the week was either a Saturday or a Sunday, and took on the value of &#39;Weekday&#39; otherwise.  The mean number of steps was computed within <strong>weekday</strong> and <strong>time_of_day</strong> and the <strong>ggplot2</strong> package was used to plot time series for weekdays and weekends, seoarately.</p>
+<p>Finally we were asked to determine if there were differences between weekdays and weekends with respect to activity at various times of day.  We were asked to use the imputed data for this comparison.  I created a <strong>weekday</strong> variable that took on the value &#39;Weekend&#39; if the day of the week was either a Saturday or a Sunday, and took on the value of &#39;Weekday&#39; otherwise.  The mean number of steps was computed within <strong>weekday</strong> and <strong>time_of_day</strong> and the <strong>ggplot2</strong> package (along with the <strong>scales</strong> package) was used to plot time series for weekdays and weekends, separately.</p>
 
 <pre><code class="r">## 
 library(ggplot2)
